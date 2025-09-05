@@ -2,21 +2,20 @@
 "use client";
 
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import type { Product } from '@/lib/types';
-import { ShoppingCart, Minus, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Input } from '@/components/ui/input';
 
-const MOCK_PRODUCTS: Omit<Product, 'description'>[] = [
+const MOCK_PRODUCTS: Product[] = [
   {
     id: '1',
     name: 'Jacksnack Alpha',
     imageURL: 'https://picsum.photos/400/600?random=1',
     quantity: 1,
     price: 1.00,
+    description: 'High-speed processing and ultra-durable chassis for the ultimate performance.',
   },
   {
     id: '2',
@@ -24,6 +23,7 @@ const MOCK_PRODUCTS: Omit<Product, 'description'>[] = [
     imageURL: 'https://picsum.photos/400/600?random=2',
     quantity: 1,
     price: 79.99,
+    description: 'Compact, lightweight, with all-day battery life for productivity on the go.',
   },
   {
     id: '3',
@@ -31,28 +31,19 @@ const MOCK_PRODUCTS: Omit<Product, 'description'>[] = [
     imageURL: 'https://picsum.photos/400/600?random=3',
     quantity: 1,
     price: 129.99,
+    description: 'A stunning 4K Ultra-HD display and an immersive audio system for entertainment.',
   },
 ];
 
 export default function Products() {
-  const [products, setProducts] = useState<Omit<Product, 'description'>[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     setProducts(MOCK_PRODUCTS);
   }, []);
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
-    if (newQuantity >= 1) {
-      setProducts(prevProducts =>
-        prevProducts.map(p =>
-          p.id === productId ? { ...p, quantity: newQuantity } : p
-        )
-      );
-    }
-  };
-
   return (
-    <section className="py-16 md:py-24 lg:py-32">
+    <section id="products" className="py-16 md:py-24 lg:py-32">
       <div className="container px-4 md:px-6">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tighter">Our Products</h2>
@@ -62,7 +53,7 @@ export default function Products() {
           {products.map((product) => (
             <Card key={product.id} className="overflow-hidden transition-all hover:shadow-xl hover:scale-[1.02] flex flex-col">
               <CardHeader className="p-0">
-                <div className="relative w-full h-[450px]">
+                <div className="relative w-full h-[380px]">
                     <Image
                       src={product.imageURL}
                       alt={product.name}
@@ -75,31 +66,15 @@ export default function Products() {
               <CardContent className="p-6 space-y-4 flex-grow flex flex-col">
                 <div className="flex-grow">
                   <CardTitle className="text-2xl font-bold">{product.name}</CardTitle>
-                  <p className="text-xl font-semibold text-primary mt-2">₹{product.price.toFixed(2)}</p>
-                </div>
-                 <div className="flex items-center justify-center gap-2 mt-4">
-                  <Button variant="outline" size="icon" onClick={() => handleQuantityChange(product.id, product.quantity - 1)}>
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Input 
-                    type="number" 
-                    className="w-16 text-center" 
-                    value={product.quantity}
-                    onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value, 10) || 1)}
-                    min="1"
-                  />
-                  <Button variant="outline" size="icon" onClick={() => handleQuantityChange(product.id, product.quantity + 1)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <p className="text-xl font-light text-gray-800 mt-2">₹{product.price.toFixed(2)}</p>
+                  <CardDescription className="mt-4 text-base text-muted-foreground">
+                    {product.description}
+                  </CardDescription>
                 </div>
                 <div className="flex flex-col gap-2 mt-4">
-                  <Button variant="outline">
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Add to Cart
-                  </Button>
-                  <Link href={`/buy/${product.id}?quantity=${product.quantity}`} passHref>
+                  <Link href={`/buy/${product.id}`} passHref>
                     <Button className="w-full">
-                        Buy Now
+                        View Product
                     </Button>
                   </Link>
                 </div>

@@ -45,3 +45,60 @@ export async function submitContactForm(data: z.infer<typeof ContactFormSchema>)
     };
   }
 }
+
+
+const OrderSchema = z.object({
+    customerName: z.string(),
+    email: z.string(),
+    phone: z.string(),
+    address: z.string(),
+    items: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        quantity: z.number(),
+        price: z.number(),
+    })).optional(), // For multi-item carts
+    productName: z.string().optional(), // For single-item purchases
+    quantity: z.number().optional(), // For single-item purchases
+    amount: z.number(),
+    paymentMethod: z.string(),
+    paymentStatus: z.string(),
+    orderStatus: z.string(),
+    trackingId: z.string().optional(),
+});
+
+export async function placeOrder(orderData: any) {
+    const validatedOrder = OrderSchema.safeParse(orderData);
+
+    if (!validatedOrder.success) {
+        console.error("Invalid order data:", validatedOrder.error);
+        return {
+            success: false,
+            error: "Invalid order data provided.",
+        };
+    }
+    
+    try {
+        // As with the contact form, we'll simulate the database write.
+        // A real implementation would use the Firebase Admin SDK here.
+        console.log("Simulating saving order to Firestore:", {
+            ...validatedOrder.data,
+            createdAt: new Date(),
+        });
+        
+        // In a real app, you would add the document to Firestore like this:
+        // const db = getFirebaseAdminDb(); // Assuming an admin DB initializer
+        // await addDoc(collection(db, "orders"), {
+        //   ...validatedOrder.data,
+        //   createdAt: new Date(),
+        // });
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving order to Firestore:", error);
+        return {
+            success: false,
+            error: "An unexpected error occurred while placing the order.",
+        };
+    }
+}

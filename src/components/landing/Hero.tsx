@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -12,6 +13,7 @@ import { type CarouselApi } from "@/components/ui/carousel";
 import { cn } from '@/lib/utils';
 import Autoplay from "embla-carousel-autoplay";
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 const heroSlides = [
   {
@@ -40,6 +42,7 @@ export default function Hero() {
   const plugin = useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
   );
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!api) {
@@ -78,7 +81,7 @@ export default function Hero() {
             {heroSlides.map((slide, index) => (
               <CarouselItem key={index}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-center">
-                   <div className="relative w-full aspect-square rounded-lg overflow-hidden">
+                   <div className="relative w-full aspect-square">
                       <Image
                         src={slide.imageSrc}
                         alt={`JACKSNACK Product Image: ${slide.title}`}
@@ -91,17 +94,19 @@ export default function Hero() {
                       />
                     </div>
                   <div className="space-y-6 text-center md:text-left">
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-                      <span className="text-primary">{slide.title.split(' ').slice(0, 3).join(' ')}</span><br />{slide.title.split(' ').slice(3).join(' ')}
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-black">
+                      {slide.title}
                     </h1>
-                    <p className="text-lg text-muted-foreground">
+                    <p className="text-lg text-gray-600">
                       {slide.description}
                     </p>
-                    <Link href="/buy">
-                      <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 rounded-full transition-transform hover:scale-105">
-                        BUY NOW
-                      </Button>
-                    </Link>
+                    <div className="mt-4">
+                      <Link href={user ? "/buy" : "/login"}>
+                        <Button size="lg" className="bg-red-500 hover:bg-red-600 text-primary-foreground text-lg px-8 py-6 rounded-md transition-transform hover:scale-105">
+                          Buy now!
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </CarouselItem>

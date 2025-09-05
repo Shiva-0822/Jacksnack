@@ -1,7 +1,7 @@
 
 import Header from '@/components/buy/Header';
 import Footer from '@/components/buy/Footer';
-import Products from '@/components/landing/Products';
+import Products from '@/components/buy/Products';
 
 export default function BuyNowPage() {
   return (

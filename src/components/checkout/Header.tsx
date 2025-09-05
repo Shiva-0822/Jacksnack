@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Facebook, Instagram, Youtube, Twitter, Search, User, ShoppingCart, LogOut, Trash2, LogIn } from 'lucide-react';
+import { Facebook, Instagram, Youtube, Twitter, Search, User, ShoppingCart, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getFirebaseAuth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -15,12 +15,10 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useCart } from '@/context/CartContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from "@/hooks/use-toast";
-
 
 const navLinks = [
   { name: "HOME", href: "/" },
-  { name: "PRODUCTS", href: "/buy", active: true },
+  { name: "PRODUCTS", href: "/buy" },
   { name: "COMBOS", href: "#" },
   { name: "ABOUT US", href: "/#about" },
   { name: "CONTACT US", href: "/#contact" },
@@ -29,7 +27,7 @@ const navLinks = [
 
 export default function Header() {
   const { user } = useAuth();
-  const { cart, loading, removeItem } = useCart();
+  const { cart, loading } = useCart();
   const router = useRouter();
   const [auth, setAuth] = useState<Auth | null>(null);
 
@@ -42,10 +40,6 @@ export default function Header() {
       await signOut(auth);
     }
     router.push('/login');
-  };
-
-  const handleRemoveItem = async (itemId: string) => {
-    await removeItem(itemId);
   };
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -77,7 +71,7 @@ export default function Header() {
           <ul className="flex items-center gap-8">
             {navLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className={`font-medium pb-1 ${link.active ? 'text-gray-900 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-900'}`}>
+                <Link href={link.href} className={`font-medium pb-1 text-gray-500 hover:text-gray-900`}>
                     {link.name}
                 </Link>
               </li>
@@ -88,38 +82,30 @@ export default function Header() {
         <div className="flex items-center gap-6">
           <button className="text-gray-500 hover:text-gray-900"><Search className="w-5 h-5" /></button>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900 rounded-full">
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900 rounded-full">
+                  <User className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {user.email && <DropdownMenuItem disabled><span className='text-xs text-muted-foreground'>{user.email}</span></DropdownMenuItem>}
+                <DropdownMenuItem onClick={handleLogout} className='cursor-pointer'>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link href="/login" passHref>
+              <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900">
                 <User className="w-5 h-5" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {user ? (
-                <>
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {user.email && <DropdownMenuItem disabled><span className='text-xs text-muted-foreground'>{user.email}</span></DropdownMenuItem>}
-                  <DropdownMenuItem onClick={handleLogout} className='cursor-pointer'>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </>
-              ) : (
-                <>
-                  <DropdownMenuLabel>Guest</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem disabled>
-                    <span className='text-xs text-muted-foreground'>No user is logged in</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/login')} className='cursor-pointer'>
-                    <LogIn className="mr-2 h-4 w-4" />
-                    <span>Login</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </Link>
+          )}
 
           <Sheet>
             <SheetTrigger asChild>
@@ -149,8 +135,8 @@ export default function Header() {
                   <ScrollArea className="flex-1 -mx-6 px-6">
                     <div className="divide-y divide-gray-200">
                       {cart.map(item => (
-                        <div key={item.id} className="py-6 flex items-start gap-4">
-                          <div className="w-24 h-24 relative rounded-md overflow-hidden flex-shrink-0">
+                        <div key={item.id} className="py-6 flex items-center gap-4">
+                          <div className="w-24 h-24 relative rounded-md overflow-hidden">
                              <Image
                                 src={item.imageURL}
                                 alt={item.name}
@@ -161,17 +147,10 @@ export default function Header() {
                           <div className="flex-1">
                             <h3 className="font-semibold text-gray-800">{item.name}</h3>
                             <p className="text-sm text-gray-500">₹{item.price.toFixed(2)}</p>
-                            <p className="text-sm text-gray-500 mt-1">Qty: {item.quantity}</p>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 w-8 h-8"
-                            onClick={() => handleRemoveItem(item.id)}
-                            aria-label={`Remove ${item.name} from cart`}
-                            >
-                             <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                             <p>Qty: {item.quantity}</p>
+                          </div>
                         </div>
                       ))}
                     </div>

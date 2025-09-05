@@ -5,6 +5,7 @@ export interface Product {
   imageURL: string;
   quantity: number;
   price: number;
+  description?: string;
 }
 
 export interface Testimonial {

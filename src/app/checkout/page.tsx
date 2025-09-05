@@ -2,19 +2,18 @@
 "use client";
 
 import { useState, useEffect, Suspense } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, Landmark, Truck, Info, ChevronDown, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CreditCard, Landmark, Truck, Info, ChevronDown, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import type { Product } from '@/lib/types';
-import Header from '@/components/buy/Header';
-import Footer from '@/components/buy/Footer';
+import { useCart } from '@/context/CartContext';
+import Header from '@/components/checkout/Header';
+import Footer from '@/components/checkout/Footer';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,82 +22,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { placeOrder } from '@/app/actions';
 
-const MOCK_PRODUCTS: (Omit<Product, 'quantity'> & { price: number; reviews: number; rating: number; dataAiHint: string })[] = [
-    {
-      id: 'prod_1',
-      name: 'Jacksnack Alpha',
-      imageURL: 'https://picsum.photos/400/600?random=1',
-      price: 1.00,
-      reviews: 120,
-      rating: 5,
-      dataAiHint: 'sleek gadget'
-    },
-    {
-      id: 'prod_2',
-      name: 'Vacuum Fried Bhindi Treat Mini - 20 gms',
-      imageURL: 'https://picsum.photos/300/300?random=22',
-      price: 55.00,
-      reviews: 12,
-      rating: 4,
-      dataAiHint: 'fried okra snack',
-    },
-    {
-      id: 'prod_3',
-      name: 'Vacuum Fried Jackfruit Treat - 50 gms',
-      imageURL: 'https://picsum.photos/300/300?random=23',
-      price: 99.00,
-      reviews: 16,
-      rating: 5,
-      dataAiHint: 'jackfruit chips',
-    },
-    {
-      id: 'prod_4',
-      name: 'Vacuum Fried Garlic Treat - 40 gms',
-      imageURL: 'https://picsum.photos/300/300?random=24',
-      price: 130.00,
-      reviews: 19,
-      rating: 5,
-      dataAiHint: 'garlic chips',
-    },
-    {
-      id: 'prod_5',
-      name: 'Chips',
-      imageURL: 'https://picsum.photos/400/400?random=25',
-      price: 50.00,
-      reviews: 25,
-      rating: 4,
-      dataAiHint: 'potato chips',
-    },
-    {
-      id: 'prod_6',
-      name: 'Spicy Sticks',
-      imageURL: 'https://picsum.photos/400/400?random=26',
-      price: 60.00,
-      reviews: 18,
-      rating: 5,
-      dataAiHint: 'spicy snacks',
-    },
-    {
-      id: 'prod_7',
-      name: 'Jacksnack Beta',
-      imageURL: 'https://picsum.photos/400/600?random=2',
-      price: 79.99,
-      reviews: 95,
-      rating: 4,
-      dataAiHint: 'modern device'
-    },
-    {
-      id: 'prod_8',
-      name: 'Jacksnack Gamma',
-      imageURL: 'https://picsum.photos/400/600?random=3',
-      price: 129.99,
-      reviews: 210,
-      rating: 5,
-      dataAiHint: 'premium electronics'
-    },
-  ];
-
-type CheckoutProduct = Omit<Product, 'quantity'> & { price: number };
 
 const FormSchema = z.object({
     country: z.string(),
@@ -119,12 +42,8 @@ declare global {
 }
 
 const CheckoutComponent = () => {
-  const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { id } = params;
-  const [product, setProduct] = useState<(CheckoutProduct & { id: string }) | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const { cart, loading: cartLoading, clearCart } = useCart();
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -154,29 +73,26 @@ const CheckoutComponent = () => {
       document.body.removeChild(script);
     };
   }, []);
-
+  
   useEffect(() => {
-    if (id) {
-      const foundProduct = MOCK_PRODUCTS.find(p => p.id === id);
-      if (foundProduct) {
-        setProduct(foundProduct);
-      }
+    if (!cartLoading && cart.length === 0) {
+      toast({
+        title: "Your cart is empty",
+        description: "Redirecting to products page.",
+      });
+      router.push('/buy');
     }
-    const qty = searchParams.get('quantity');
-    if (qty && !isNaN(parseInt(qty))) {
-      setQuantity(parseInt(qty));
-    }
-  }, [id, searchParams]);
+  }, [cart, cartLoading, router, toast]);
 
   const sendWhatsAppMessage = (orderData: any) => {
     const ownerNumber = '918123363394';
+     const productDetails = cart.map(item => `${item.name} (x${item.quantity})`).join(', ');
     const messageParts = [
         `🛍️ *New Order!*`,
         `*Payment:* ${orderData.paymentMethod}`,
         `*Customer:* ${orderData.customerName}`,
         `*Phone:* ${orderData.phone}`,
-        `*Product:* ${orderData.productName}`,
-        `*Quantity:* ${orderData.quantity}`,
+        `*Product(s):* ${productDetails}`,
         `*Address:* ${orderData.address}`,
         `*Total Amount:* ₹${orderData.amount.toFixed(2)}`
     ];
@@ -186,12 +102,14 @@ const CheckoutComponent = () => {
   };
 
   const makePayment = async (orderData: any) => {
+    const productDescription = cart.map(p => p.name).join(', ');
+
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       amount: orderData.amount * 100, // amount in the smallest currency unit
       currency: 'INR',
       name: 'JACKSNACK',
-      description: `Order for ${orderData.productName}`,
+      description: `Order for ${productDescription}`,
       image: 'https://picsum.photos/100/50?random=20',
       handler: async (response: any) => {
         try {
@@ -206,18 +124,19 @@ const CheckoutComponent = () => {
             const result = await placeOrder(finalOrderData);
 
             if (!result.success) {
-                throw new Error(result.error || "Failed to place order.");
+                throw new Error(result.error || "Failed to place order after payment.");
             }
 
             sendWhatsAppMessage(finalOrderData);
     
             toast({
               title: 'Payment Successful!',
-              description: `Your order for ${orderData.productName} has been placed.`,
+              description: `Your order for ${productDescription} has been placed.`,
             });
+            await clearCart();
             form.reset();
         } catch (error) {
-            console.error("Error placing order after payment:", error);
+            console.error("Error saving order after payment:", error);
             toast({
                 title: "Error",
                 description: "There was a problem saving your order after payment. Please contact support.",
@@ -256,21 +175,27 @@ const CheckoutComponent = () => {
   }
 
   async function handlePayNow(data: z.infer<typeof FormSchema>) {
-    if (!product) return;
+    if (cart.length === 0) return;
 
     setIsProcessing(true);
     
-    const subtotal = product.id === 'prod_1' ? 1.00 : product.price * quantity;
-    const shipping = product.id === 'prod_1' ? 1.00 : 40.00;
+    const subtotal = cart.reduce((acc, item) => {
+      if (item.id === 'prod_1') return acc + 1.00; // Special case for Jacksnack Alpha
+      return acc + (item.price * item.quantity);
+    }, 0);
+
+    const hasJacksnackAlpha = cart.some(item => item.id === 'prod_1');
+    const standardShipping = 40.00;
+    const shipping = hasJacksnackAlpha ? 1.00 : standardShipping;
+
     const total = subtotal + shipping;
 
     const orderData = {
         customerName: `${data.firstName} ${data.lastName}`,
-        email: 'not-provided@example.com',
+        email: 'not-provided@example.com', // You might want to get this from user profile
         phone: data.phone,
         address: [data.address, data.apartment, data.city, data.state, data.zip, data.country].filter(Boolean).join(', '),
-        productName: product.name,
-        quantity: quantity,
+        items: cart.map(item => ({id: item.id, name: item.name, quantity: item.quantity, price: item.price})),
         amount: total,
         paymentMethod: paymentMethod,
         paymentStatus: 'pending',
@@ -286,7 +211,7 @@ const CheckoutComponent = () => {
             const result = await placeOrder(finalOrderData);
 
             if (!result.success) {
-                throw new Error(result.error || "Failed to place order.");
+                throw new Error(result.error || "Failed to place COD order.");
             }
 
             sendWhatsAppMessage(finalOrderData);
@@ -295,6 +220,7 @@ const CheckoutComponent = () => {
               title: "Order Placed!",
               description: "Your order has been placed successfully. You will pay on delivery.",
             });
+            await clearCart();
             form.reset();
             setIsProcessing(false);
         }
@@ -311,16 +237,25 @@ const CheckoutComponent = () => {
   }
 
 
-  if (!product) {
+  if (cartLoading || cart.length === 0) {
     return (
         <div className="flex justify-center items-center h-screen">
-            <p>Product not found or loading...</p>
+            <div className="flex flex-col items-center gap-4">
+                <ShoppingCart className="h-16 w-16 text-gray-400 animate-bounce" />
+                <p className="text-lg text-gray-600">Loading your cart...</p>
+            </div>
         </div>
     );
   }
 
-  const subtotal = product.id === 'prod_1' ? 1.00 : product.price * quantity;
-  const shipping = product.id === 'prod_1' ? 1.00 : 40.00;
+  const subtotal = cart.reduce((acc, item) => {
+    if (item.id === 'prod_1') return acc + 1.00;
+    return acc + (item.price * item.quantity);
+  }, 0);
+
+  const hasJacksnackAlpha = cart.some(item => item.id === 'prod_1');
+  const shipping = hasJacksnackAlpha ? 1.00 : 40.00;
+  
   const total = subtotal + shipping;
 
   return (
@@ -334,47 +269,10 @@ const CheckoutComponent = () => {
                 </Link>
             </div>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handlePayNow)} className="flex flex-col lg:flex-row gap-12">
-                    {/* Left side: Order Summary */}
-                    <aside className="w-full lg:w-1/3 lg:order-2">
-                        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Order Summary</h2>
-                        <div className="bg-white rounded-lg shadow-md p-6">
-                            <div className="flex items-center space-x-6">
-                                <div className="relative w-24 h-24 rounded-lg overflow-hidden">
-                                    <Image 
-                                        src={product.imageURL} 
-                                        alt={product.name} 
-                                        width={96}
-                                        height={96}
-                                        className="object-contain"
-                                    />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-medium text-gray-800">{product.name}</h3>
-                                    <p className="text-gray-600">Quantity: {quantity}</p>
-                                    <p className="text-xl font-bold text-gray-900 mt-2">₹{product.price.toFixed(2)}</p>
-                                </div>
-                            </div>
-                            <Separator className="my-6" />
-                            <div className="space-y-2">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Subtotal</span>
-                                    <span className="font-medium text-gray-800">₹{subtotal.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Shipping</span>
-                                    <span className="font-medium text-gray-800">₹{shipping.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-bold text-gray-900">
-                                    <span>Total</span>
-                                    <span>₹{total.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </aside>
-
-                    {/* Right side: Contact, Delivery, Payment */}
-                    <div className="w-full lg:w-2/3 lg:order-1 space-y-8">
+                <form onSubmit={form.handleSubmit(handlePayNow)} className="flex flex-col-reverse lg:flex-row gap-12">
+                    
+                    {/* Left side: Contact, Delivery, Payment */}
+                    <div className="w-full lg:w-2/3 space-y-8">
                         
                         {/* Shipping details Section */}
                         <div className="bg-white rounded-lg shadow-md p-6">
@@ -480,6 +378,49 @@ const CheckoutComponent = () => {
                             {isProcessing ? 'Processing...' : 'Pay now'}
                         </Button>
                     </div>
+
+                    {/* Right side: Order Summary */}
+                    <aside className="w-full lg:w-1/3">
+                        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Order Summary</h2>
+                        <div className="bg-white rounded-lg shadow-md p-6">
+                            <div className="space-y-6">
+                                {cart.map(item => (
+                                <div key={item.id} className="flex items-center space-x-6">
+                                    <div className="relative w-24 h-24 rounded-lg overflow-hidden">
+                                        <Image 
+                                            src={item.imageURL} 
+                                            alt={item.name} 
+                                            width={96}
+                                            height={96}
+                                            className="object-contain"
+                                        />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-medium text-gray-800">{item.name}</h3>
+                                        <p className="text-gray-600">Quantity: {item.quantity}</p>
+                                        <p className="text-xl font-bold text-gray-900 mt-2">₹{item.price.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                                ))}
+                            </div>
+                            <Separator className="my-6" />
+                            <div className="space-y-2">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal</span>
+                                    <span className="font-medium text-gray-800">₹{subtotal.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Shipping</span>
+                                    <span className="font-medium text-gray-800">₹{shipping.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold text-gray-900">
+                                    <span>Total</span>
+                                    <span>₹{total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
                 </form>
             </Form>
         </main>

@@ -67,9 +67,15 @@ export default function LoginPage() {
       }
       router.push('/buy');
     } catch (error: any) {
+        let description = "An unexpected error occurred.";
+        if (error.code === 'auth/invalid-credential' && !isSigningUp) {
+            description = "You're a new user. Please create an account before logging in.";
+        } else {
+            description = error.message;
+        }
       toast({
         title: 'Authentication Failed',
-        description: error.message,
+        description: description,
         variant: 'destructive',
       });
     } finally {
@@ -109,7 +115,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  placeholder='******'
+                  placeholder={isSigningUp ? 'Create your new password' : 'Enter your password'}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
