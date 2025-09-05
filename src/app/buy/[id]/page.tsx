@@ -188,11 +188,11 @@ const CheckoutComponent = () => {
   const placeClientSideOrder = async (orderData: any) => {
     try {
         const db = getFirebaseDb();
-        await addDoc(collection(db, "orders"), {
+        const docRef = await addDoc(collection(db, "orders"), {
            ...orderData,
            createdAt: new Date(),
         });
-        return { success: true };
+        return { success: true, orderId: docRef.id };
     } catch (error) {
         console.error("Error saving order to Firestore:", error);
         return {
@@ -203,6 +203,7 @@ const CheckoutComponent = () => {
   };
 
   const makePayment = async (orderData: any) => {
+    setIsProcessing(true);
     const options = {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
       amount: orderData.amount * 100, // amount in the smallest currency unit
@@ -211,7 +212,6 @@ const CheckoutComponent = () => {
       description: `Order for ${orderData.productName}`,
       image: 'https://picsum.photos/100/50?random=20',
       handler: async (response: any) => {
-        setIsProcessing(true);
         try {
             const finalOrderData = {
               ...orderData,

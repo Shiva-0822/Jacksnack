@@ -103,11 +103,11 @@ const CheckoutComponent = () => {
   const placeClientSideOrder = async (orderData: any) => {
     try {
         const db = getFirebaseDb();
-        await addDoc(collection(db, "orders"), {
+        const docRef = await addDoc(collection(db, "orders"), {
            ...orderData,
            createdAt: new Date(),
         });
-        return { success: true };
+        return { success: true, orderId: docRef.id };
     } catch (error) {
         console.error("Error saving order to Firestore:", error);
         return {
@@ -118,6 +118,7 @@ const CheckoutComponent = () => {
   };
 
   const makePayment = async (orderData: any) => {
+    setIsProcessing(true);
     const productDescription = cart.map(p => p.name).join(', ');
 
     const options = {
@@ -128,7 +129,6 @@ const CheckoutComponent = () => {
       description: `Order for ${productDescription}`,
       image: 'https://picsum.photos/100/50?random=20',
       handler: async (response: any) => {
-        setIsProcessing(true);
         try {
             const finalOrderData = {
               ...orderData,
