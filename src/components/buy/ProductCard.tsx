@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star, ShoppingCart } from 'lucide-react';
@@ -5,7 +6,7 @@ import type { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
 type ProductCardProps = {
-    product: Omit<Product, 'description'> & { price: number; reviews: number; rating: number, dataAiHint: string };
+    product: Omit<Product, 'quantity'> & { imageURL: string; price: number; reviews: number; rating: number, dataAiHint: string };
 };
 
 const ProductCard = ({ product }: ProductCardProps) => {
@@ -28,7 +29,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
             ))}
             <span className="text-sm text-gray-500 ml-1">({product.reviews} reviews)</span>
         </div>
-        <p className="text-lg font-semibold text-gray-800 mb-4">From ₹. {product.price.toFixed(2)}</p>
+        <p className="text-lg font-semibold text-gray-800 mb-4">From ₹{product.price.toFixed(2)}</p>
       </div>
       <div className="flex flex-col gap-2 mt-auto">
         <Button variant="outline" size="sm">

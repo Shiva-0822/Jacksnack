@@ -1,8 +1,10 @@
+
 export interface Product {
   id: string;
   name: string;
-  description: string[];
   imageURL: string;
+  quantity: number;
+  price: number;
 }
 
 export interface Testimonial {

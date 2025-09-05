@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, CreditCard, Landmark, Truck, Info, ChevronDown, ShieldCheck } from 'lucide-react';
@@ -23,16 +23,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { addDoc, collection, Firestore } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
+import { FirebaseError } from 'firebase/app';
 
-const MOCK_PRODUCTS: (Omit<Product, 'description'> & { price: number; reviews: number; rating: number; dataAiHint: string })[] = [
+const MOCK_PRODUCTS: (Omit<Product, 'quantity'> & { price: number; reviews: number; rating: number; dataAiHint: string })[] = [
     {
       id: '1',
-      name: 'Vacuum Fried Bhindi Okra Treat - 50 gms',
-      imageURL: 'https://picsum.photos/300/300?random=21',
-      price: 130.00,
-      reviews: 33,
+      name: 'Jacksnack Alpha',
+      imageURL: 'https://picsum.photos/400/600?random=1',
+      price: 1.00,
+      reviews: 120,
       rating: 5,
-      dataAiHint: 'fried okra',
+      dataAiHint: 'sleek gadget'
     },
     {
       id: '2',
@@ -61,12 +62,47 @@ const MOCK_PRODUCTS: (Omit<Product, 'description'> & { price: number; reviews: n
       rating: 5,
       dataAiHint: 'garlic chips',
     },
+    {
+      id: '5',
+      name: 'Chips',
+      imageURL: 'https://picsum.photos/400/400?random=25',
+      price: 50.00,
+      reviews: 25,
+      rating: 4,
+      dataAiHint: 'potato chips',
+    },
+    {
+      id: '6',
+      name: 'Spicy Sticks',
+      imageURL: 'https://picsum.photos/400/400?random=26',
+      price: 60.00,
+      reviews: 18,
+      rating: 5,
+      dataAiHint: 'spicy snacks',
+    },
+    {
+      id: '2',
+      name: 'Jacksnack Beta',
+      imageURL: 'https://picsum.photos/400/600?random=2',
+      price: 79.99,
+      reviews: 95,
+      rating: 4,
+      dataAiHint: 'modern device'
+    },
+    {
+      id: '3',
+      name: 'Jacksnack Gamma',
+      imageURL: 'https://picsum.photos/400/600?random=3',
+      price: 129.99,
+      reviews: 210,
+      rating: 5,
+      dataAiHint: 'premium electronics'
+    },
   ];
 
-type CheckoutProduct = Omit<Product, 'description'> & { price: number };
+type CheckoutProduct = Omit<Product, 'quantity'> & { price: number };
 
 const FormSchema = z.object({
-    email: z.string().email({ message: "Please enter a valid email." }),
     country: z.string(),
     firstName: z.string().min(1, "First name is required."),
     lastName: z.string().min(1, "Last name is required."),
@@ -76,9 +112,6 @@ const FormSchema = z.object({
     state: z.string(),
     zip: z.string().min(1, "PIN code is required."),
     phone: z.string().min(1, "Phone number is required."),
-    saveInfo: z.boolean().optional(),
-    emailOffers: z.boolean().optional(),
-    textOffers: z.boolean().optional(),
 });
 
 declare global {
@@ -87,13 +120,13 @@ declare global {
   }
 }
 
-const PhonePeLogo = () => <svg width="40" height="20" viewBox="0 0 119 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M99.638 15.01H105.52V27.132H112.553V15.01H118.435V9.458H99.638V15.01Z" fill="#844BD9"/><path d="M85.034 22.84C88.474 22.84 90.738 21.11 90.738 18.064C90.738 15.018 88.474 13.288 85.034 13.288H79.23V22.84H85.034ZM79.23 7.822H84.88C88.948 7.822 91.956 9.63 91.956 13.288V13.794C94.068 14.544 95.736 16.002 95.736 18.292C95.736 22.186 92.426 24.474 88.026 24.474H84.726V27.132H79.23V22.84V7.822Z" fill="#844BD9"/><path d="M60.384 21.032L63.314 27.132H69.096L64.242 18.446L68.868 9.458H63.236L59.722 16.08L56.208 9.458H50.576L55.28 18.368L50.354 27.132H56.136L60.384 21.032Z" fill="#844BD9"/><path d="M47.239 0.814003H35.839V5.038H41.539V27.132H47.239V0.814003Z" fill="#8f4fe8"/><path d="M22.039 12.334C24.439 12.334 26.131 11.026 26.131 8.86C26.131 6.694 24.439 5.386 22.039 5.386H17.915V12.334H22.039ZM17.915 27.132H23.547L29.725 16.908C31.523 19.386 33.865 20.378 36.601 20.378H38.5V27.132H32.88V22.062C30.694 22.062 29.026 21.07 27.796 19.464L23.833 27.132H17.915V12.334V7.822V5.386V0.814003H22.193C25.939 0.814003 29.117 3.024 29.117 6.848C29.117 9.872 26.853 12.042 23.833 12.792V12.87C26.361 13.542 28.159 15.35 28.159 17.83C28.159 19.854 26.929 21.662 25.131 22.84L28.963 27.132H32.803L38.5 20.924V0.814003H32.88V18.142C30.616 16.534 29.026 14.544 29.026 12.18C29.026 11.266 29.18 10.43 29.572 9.63L23.233 0.814003H17.915V5.386H12.215V27.132H17.915Z" fill="#844BD9"/><path d="M12.215 5.386V0.814003H0V5.386H12.215Z" fill="#844BD9"/></svg>;
-
-export default function CheckoutPage() {
+const CheckoutComponent = () => {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { id } = params;
-  const [product, setProduct] = useState<CheckoutProduct | null>(null);
+  const [product, setProduct] = useState<(CheckoutProduct & { id: string }) | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -115,7 +148,6 @@ export default function CheckoutPage() {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      email: "",
       country: "india",
       firstName: "",
       lastName: "",
@@ -125,9 +157,6 @@ export default function CheckoutPage() {
       state: "karnataka",
       zip: "",
       phone: "",
-      saveInfo: false,
-      emailOffers: false,
-      textOffers: false,
     },
   });
 
@@ -149,7 +178,28 @@ export default function CheckoutPage() {
         setProduct(foundProduct);
       }
     }
-  }, [id]);
+    const qty = searchParams.get('quantity');
+    if (qty && !isNaN(parseInt(qty))) {
+      setQuantity(parseInt(qty));
+    }
+  }, [id, searchParams]);
+
+  const sendWhatsAppMessage = (orderData: any) => {
+    const ownerNumber = '918123363394';
+    const messageParts = [
+        `🛍️ *New Order!*`,
+        `*Payment:* ${orderData.paymentMethod}`,
+        `*Customer:* ${orderData.customerName}`,
+        `*Phone:* ${orderData.phone}`,
+        `*Product:* ${orderData.productName}`,
+        `*Quantity:* ${orderData.quantity}`,
+        `*Address:* ${orderData.address}`,
+        `*Total Amount:* ₹${orderData.amount.toFixed(2)}`
+    ];
+    const message = messageParts.join('\n');
+    const whatsappUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const makePayment = async (orderData: any) => {
     if (!db) {
@@ -169,24 +219,42 @@ export default function CheckoutPage() {
       description: `Order for ${orderData.productName}`,
       image: 'https://picsum.photos/100/50?random=20',
       handler: async (response: any) => {
-        // In a real app, you would send this to your server for verification
-        console.log('Payment successful:', response);
-        
-        const finalOrderData = {
-          ...orderData,
-          paymentId: response.razorpay_payment_id,
-          paymentStatus: 'paid',
-        }
-        await addDoc(collection(db, "orders"), finalOrderData);
+        try {
+            console.log('Payment successful:', response);
+            
+            const finalOrderData = {
+              ...orderData,
+              paymentId: response.razorpay_payment_id,
+              paymentStatus: 'paid',
+            }
+            await addDoc(collection(db, "orders"), finalOrderData);
 
-        toast({
-          title: 'Payment Successful!',
-          description: `Your order for ${orderData.productName} has been placed.`,
-        });
-        form.reset();
-        setIsProcessing(false);
-        // Potentially redirect to an order confirmation page
-        // router.push('/order-success');
+            sendWhatsAppMessage(finalOrderData);
+    
+            toast({
+              title: 'Payment Successful!',
+              description: `Your order for ${orderData.productName} has been placed.`,
+            });
+            form.reset();
+        } catch (error) {
+            console.error("Error saving order after payment:", error);
+            if (error instanceof FirebaseError && error.code === 'permission-denied') {
+                toast({
+                    title: "Permission Denied",
+                    description: "Action needed: Your app does not have permission to write to the database. Please update your Firestore security rules in the Firebase Console.",
+                    variant: "destructive",
+                    duration: 9000,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: "There was a problem saving your order after payment. Please contact support.",
+                    variant: "destructive",
+                });
+            }
+        } finally {
+            setIsProcessing(false);
+        }
       },
       prefill: {
         name: orderData.customerName,
@@ -230,13 +298,18 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
     
+    const subtotal = product.id === '1' ? 1.00 : product.price * quantity;
+    const shipping = product.id === '1' ? 1.00 : 40.00;
+    const total = subtotal + shipping;
+
     const orderData = {
         customerName: `${data.firstName} ${data.lastName}`,
-        email: data.email,
+        email: 'not-provided@example.com',
         phone: data.phone,
-        address: `${data.address}, ${data.apartment}, ${data.city}, ${data.state}, ${data.zip}, ${data.country}`,
+        address: [data.address, data.apartment, data.city, data.state, data.zip, data.country].filter(Boolean).join(', '),
         productName: product.name,
-        amount: product.price + 40,
+        quantity: quantity,
+        amount: total,
         paymentMethod: paymentMethod,
         paymentStatus: 'pending',
         orderStatus: 'placed',
@@ -248,8 +321,11 @@ export default function CheckoutPage() {
         if (paymentMethod === 'razorpay') {
             await makePayment(orderData);
         } else { // COD
-            const codOrderData = { ...orderData, paymentStatus: 'pending' };
-            await addDoc(collection(db, "orders"), codOrderData);
+            const finalOrderData = { ...orderData, paymentStatus: 'cod' };
+            await addDoc(collection(db, "orders"), finalOrderData);
+
+            sendWhatsAppMessage(finalOrderData);
+
             toast({
               title: "Order Placed!",
               description: "Your order has been placed successfully. You will pay on delivery.",
@@ -260,11 +336,20 @@ export default function CheckoutPage() {
 
     } catch (error) {
         console.error("Error processing order: ", error);
-        toast({
-            title: "Error",
-            description: "There was a problem placing your order. Please try again.",
-            variant: "destructive",
-        });
+        if (error instanceof FirebaseError && error.code === 'permission-denied') {
+            toast({
+                title: "Permission Denied",
+                description: "Action needed: Your app does not have permission to write to the database. Please update your Firestore security rules in the Firebase Console.",
+                variant: "destructive",
+                duration: 9000,
+            });
+        } else {
+             toast({
+                title: "Error",
+                description: "There was a problem placing your order. Please try again.",
+                variant: "destructive",
+            });
+        }
         setIsProcessing(false);
     }
   }
@@ -277,6 +362,10 @@ export default function CheckoutPage() {
         </div>
     );
   }
+
+  const subtotal = product.id === '1' ? 1.00 : product.price * quantity;
+  const shipping = product.id === '1' ? 1.00 : 40.00;
+  const total = subtotal + shipping;
 
   return (
     <div className="bg-gray-50">
@@ -306,7 +395,7 @@ export default function CheckoutPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-medium text-gray-800">{product.name}</h3>
-                                    <p className="text-gray-600">Quantity: 1</p>
+                                    <p className="text-gray-600">Quantity: {quantity}</p>
                                     <p className="text-xl font-bold text-gray-900 mt-2">₹{product.price.toFixed(2)}</p>
                                 </div>
                             </div>
@@ -314,15 +403,15 @@ export default function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Subtotal</span>
-                                    <span className="font-medium text-gray-800">₹{product.price.toFixed(2)}</span>
+                                    <span className="font-medium text-gray-800">₹{subtotal.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Shipping</span>
-                                    <span className="font-medium text-gray-800">₹40.00</span>
+                                    <span className="font-medium text-gray-800">₹{shipping.toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold text-gray-900">
                                     <span>Total</span>
-                                    <span>₹{(product.price + 40).toFixed(2)}</span>
+                                    <span>₹{total.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -331,41 +420,15 @@ export default function CheckoutPage() {
                     {/* Right side: Contact, Delivery, Payment */}
                     <div className="w-full lg:w-2/3 lg:order-1 space-y-8">
                         
-                        {/* Contact & Delivery Section */}
+                        {/* Shipping details Section */}
                         <div className="bg-white rounded-lg shadow-md p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-2xl font-semibold text-gray-800">Contact & Delivery</h2>
-                                <Link href="#" className="text-sm text-blue-600 hover:underline">Log in</Link>
+                            <div className="flex items-center mb-4">
+                                <Truck className="mr-3 h-6 w-6 text-gray-800" />
+                                <h2 className="text-2xl font-semibold text-gray-800">Shipping details</h2>
                             </div>
+                            <Separator className="mb-6"/>
                             <div className="space-y-6">
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <Input placeholder="Email" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="emailOffers"
-                                    render={({ field }) => (
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                            <Label htmlFor="offers" className="font-normal text-gray-600 cursor-pointer">Email me with news and offers</Label>
-                                        </FormItem>
-                                    )}
-                                />
-                                
-                                <Separator />
-
-                                <h3 className="text-lg font-semibold text-gray-700">Delivery</h3>
+                                <h3 className="text-lg font-semibold text-gray-700">Delivery to</h3>
                                 <div className="space-y-4">
                                     <FormField
                                         control={form.control}
@@ -422,9 +485,6 @@ export default function CheckoutPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    
-                                    <FormField control={form.control} name="saveInfo" render={({ field }) => ( <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><Label className="font-normal text-gray-600 cursor-pointer">Save this information for next time</Label></FormItem> )} />
-                                    <FormField control={form.control} name="textOffers" render={({ field }) => ( <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><Label className="font-normal text-gray-600 cursor-pointer">Text me with news and offers</Label></FormItem> )} />
                                 </div>
                             </div>
                         </div>
@@ -470,4 +530,12 @@ export default function CheckoutPage() {
         <Footer />
     </div>
   );
+}
+
+export default function CheckoutPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CheckoutComponent />
+        </Suspense>
+    )
 }
