@@ -20,8 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { placeOrder } from '@/app/actions';
-
+import { getFirebaseDb, addDoc, collection } from '@/lib/firebase';
 
 const FormSchema = z.object({
     country: z.string(),
@@ -101,6 +100,23 @@ const CheckoutComponent = () => {
     window.open(whatsappUrl, '_blank');
   };
 
+  const placeClientSideOrder = async (orderData: any) => {
+    try {
+        const db = getFirebaseDb();
+        await addDoc(collection(db, "orders"), {
+           ...orderData,
+           createdAt: new Date(),
+        });
+        return { success: true };
+    } catch (error) {
+        console.error("Error saving order to Firestore:", error);
+        return {
+            success: false,
+            error: "An unexpected error occurred while placing the order.",
+        };
+    }
+  };
+
   const makePayment = async (orderData: any) => {
     const productDescription = cart.map(p => p.name).join(', ');
 
@@ -112,19 +128,24 @@ const CheckoutComponent = () => {
       description: `Order for ${productDescription}`,
       image: 'https://picsum.photos/100/50?random=20',
       handler: async (response: any) => {
+        setIsProcessing(true);
         try {
-            console.log('Payment successful:', response);
-            
             const finalOrderData = {
               ...orderData,
               paymentId: response.razorpay_payment_id,
               paymentStatus: 'paid',
             }
             
-            const result = await placeOrder(finalOrderData);
+            const result = await placeClientSideOrder(finalOrderData);
 
             if (!result.success) {
-                throw new Error(result.error || "Failed to place order after payment.");
+                toast({
+                    title: "Error Placing Order",
+                    description: result.error || "There was a problem saving your order after payment. Please contact support.",
+                    variant: "destructive",
+                });
+                setIsProcessing(false);
+                return;
             }
 
             sendWhatsAppMessage(finalOrderData);
@@ -208,10 +229,16 @@ const CheckoutComponent = () => {
             await makePayment(orderData);
         } else { // COD
             const finalOrderData = { ...orderData, paymentMethod: 'COD', paymentStatus: 'cod' };
-            const result = await placeOrder(finalOrderData);
+            const result = await placeClientSideOrder(finalOrderData);
 
             if (!result.success) {
-                throw new Error(result.error || "Failed to place COD order.");
+                toast({
+                    title: "Error Placing Order",
+                    description: result.error || "Failed to place your order. Please try again.",
+                    variant: "destructive",
+                });
+                setIsProcessing(false);
+                return;
             }
 
             sendWhatsAppMessage(finalOrderData);
@@ -375,7 +402,7 @@ const CheckoutComponent = () => {
                         </div>
                         
                          <Button size="lg" type="submit" className="w-full text-lg bg-[#0c63e4] hover:bg-[#0b5ed7] text-white font-semibold" disabled={isProcessing}>
-                            {isProcessing ? 'Processing...' : 'Pay now'}
+                            {isProcessing ? 'Processing...' : (paymentMethod === 'cod' ? 'Confirm Order!' : 'Pay now')}
                         </Button>
                     </div>
 
@@ -436,3 +463,5 @@ export default function CheckoutPage() {
         </Suspense>
     )
 }
+
+    

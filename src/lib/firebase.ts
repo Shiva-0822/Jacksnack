@@ -33,4 +33,4 @@ function getFirebaseDb(): Firestore {
 
 // We no longer export the instances directly.
 // Instead, components will call these functions to get the service they need.
-export { getFirebaseAuth, getFirebaseDb, firebaseConfig, collection, doc, setDoc, addDoc, deleteDoc, getDoc, serverTimestamp, increment };
+export { getFirebaseAuth, getFirebaseDb, getApp, getFirestore, firebaseConfig, collection, doc, setDoc, addDoc, deleteDoc, getDoc, serverTimestamp, increment };
