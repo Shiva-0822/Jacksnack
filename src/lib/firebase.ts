@@ -1,16 +1,36 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "your-mock-api-key",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "your-mock-auth-domain",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "your-mock-project-id",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "your-mock-storage-bucket",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "your-mock-sender-id",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "your-mock-app-id",
+  apiKey: "AIzaSyCEQBmLjdw6K7k_FTF9xVoxsF5RZjQWoMM",
+  authDomain: "jacksnack-0822.firebaseapp.com",
+  projectId: "jacksnack-0822",
+  storageBucket: "jacksnack-0822.appspot.com",
+  messagingSenderId: "482669412167",
+  appId: "1:482669412167:web:955aec1e62941bd414d662",
+  measurementId: "G-TRWXKGBWH4"
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+// This function ensures that we initialize the app only once
+function getFirebaseApp(): FirebaseApp {
+    if (!getApps().length) {
+        return initializeApp(firebaseConfig);
+    }
+    return getApp();
+}
 
-export { db };
+// Export functions to get the services, which will ensure the app is initialized first.
+function getFirebaseAuth(): Auth {
+    return getAuth(getFirebaseApp());
+}
+
+function getFirebaseDb(): Firestore {
+    return getFirestore(getFirebaseApp());
+}
+
+// We no longer export the instances directly.
+// Instead, components will call these functions to get the service they need.
+export { getFirebaseAuth, getFirebaseDb, firebaseConfig };

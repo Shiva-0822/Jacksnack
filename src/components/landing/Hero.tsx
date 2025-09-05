@@ -11,10 +11,11 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { type CarouselApi } from "@/components/ui/carousel";
 import { cn } from '@/lib/utils';
 import Autoplay from "embla-carousel-autoplay";
+import Link from 'next/link';
 
 const heroSlides = [
   {
-    imageSrc: '/images/jack.jpg',
+    imageSrc: 'https://picsum.photos/800/800?random=10',
     title: 'Experience the Jacksnack Alpha',
     description: 'High-speed processing and ultra-durable chassis for the ultimate performance.',
     dataAiHint: 'futuristic gadget'
@@ -96,9 +97,11 @@ export default function Hero() {
                     <p className="text-lg text-muted-foreground">
                       {slide.description}
                     </p>
-                    <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 rounded-full transition-transform hover:scale-105">
-                      BUY NOW
-                    </Button>
+                    <Link href="/buy">
+                      <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 rounded-full transition-transform hover:scale-105">
+                        BUY NOW
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </CarouselItem>
