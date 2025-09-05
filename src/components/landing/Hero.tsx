@@ -7,13 +7,14 @@ import {
   CarouselContent,
   CarouselItem,
 } from '@/components/ui/carousel';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { type CarouselApi } from "@/components/ui/carousel";
 import { cn } from '@/lib/utils';
+import Autoplay from "embla-carousel-autoplay";
 
 const heroSlides = [
   {
-    imageSrc: 'https://picsum.photos/800/800?random=10',
+    imageSrc: '/images/jack.jpg',
     title: 'Experience the Jacksnack Alpha',
     description: 'High-speed processing and ultra-durable chassis for the ultimate performance.',
     dataAiHint: 'futuristic gadget'
@@ -35,6 +36,9 @@ const heroSlides = [
 export default function Hero() {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
+  const plugin = useRef(
+    Autoplay({ delay: 2000, stopOnInteraction: true })
+  );
 
   useEffect(() => {
     if (!api) {
@@ -63,8 +67,11 @@ export default function Hero() {
       <div className="container px-4 md:px-6">
         <Carousel
           setApi={setApi}
+          plugins={[plugin.current]}
           className="w-full rounded-lg overflow-hidden"
           opts={{ loop: true }}
+          onMouseEnter={plugin.current.stop}
+          onMouseLeave={plugin.current.reset}
         >
           <CarouselContent>
             {heroSlides.map((slide, index) => (
