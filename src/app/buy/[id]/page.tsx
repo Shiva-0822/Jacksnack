@@ -212,40 +212,30 @@ const CheckoutComponent = () => {
           description: `Order for ${orderData.productName}`,
           image: 'https://picsum.photos/100/50?random=20',
           handler: async (response: any) => {
-            try {
-                const finalOrderData = {
-                  ...orderData,
-                  paymentId: response.razorpay_payment_id,
-                  paymentStatus: 'paid',
-                }
-                
-                const result = await placeClientSideOrder(finalOrderData);
+            const finalOrderData = {
+              ...orderData,
+              paymentId: response.razorpay_payment_id,
+              paymentStatus: 'paid',
+            }
+            
+            const result = await placeClientSideOrder(finalOrderData);
 
-                if (!result.success) {
-                    toast({
-                        title: "Error Placing Order",
-                        description: result.error || "There was a problem saving your order after payment. Please contact support.",
-                        variant: "destructive",
-                    });
-                    reject(new Error("Failed to place order"));
-                    return;
-                }
-        
+            if (!result.success) {
                 toast({
-                  title: 'Payment Successful!',
-                  description: `Your order for ${finalOrderData.productName} has been placed.`,
-                });
-                
-                resolve(finalOrderData);
-            } catch (error) {
-                console.error("Error placing order after payment:", error);
-                toast({
-                    title: "Error",
-                    description: "There was a problem saving your order after payment. Please contact support.",
+                    title: "Error Placing Order",
+                    description: result.error || "There was a problem saving your order after payment. Please contact support.",
                     variant: "destructive",
                 });
-                reject(error);
+                reject(new Error("Failed to place order"));
+                return;
             }
+    
+            toast({
+              title: 'Payment Successful!',
+              description: `Your order for ${finalOrderData.productName} has been placed.`,
+            });
+            
+            resolve(finalOrderData);
           },
           prefill: {
             name: orderData.customerName,
@@ -301,7 +291,7 @@ const CheckoutComponent = () => {
 
     try {
         if (paymentMethod === 'razorpay') {
-            const paidOrderData = await makePayment(orderData);
+            const paidOrderData: any = await makePayment(orderData);
             sendWhatsAppMessage(paidOrderData);
             form.reset();
             router.push('/buy');
