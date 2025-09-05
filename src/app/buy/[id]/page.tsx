@@ -238,6 +238,7 @@ const CheckoutComponent = () => {
               description: `Your order for ${finalOrderData.productName} has been placed.`,
             });
             form.reset();
+            router.push('/buy');
         } catch (error) {
             console.error("Error placing order after payment:", error);
             toast({
@@ -324,6 +325,7 @@ const CheckoutComponent = () => {
               description: "Your order has been placed successfully. You will pay on delivery.",
             });
             form.reset();
+            router.push('/buy');
             setIsProcessing(false);
         }
 

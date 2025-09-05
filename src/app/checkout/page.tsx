@@ -156,6 +156,7 @@ const CheckoutComponent = () => {
             });
             await clearCart();
             form.reset();
+            router.push('/buy');
         } catch (error) {
             console.error("Error saving order after payment:", error);
             toast({
@@ -249,6 +250,7 @@ const CheckoutComponent = () => {
             });
             await clearCart();
             form.reset();
+            router.push('/buy');
             setIsProcessing(false);
         }
 
