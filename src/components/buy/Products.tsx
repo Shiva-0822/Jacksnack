@@ -1,15 +1,15 @@
 
 "use client";
 
+import React from 'react';
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from '@/components/ui/carousel';
 import ProductCard from './ProductCard';
 import type { Product } from '@/lib/types';
+import Autoplay from "embla-carousel-autoplay";
 
 const MOCK_PRODUCTS: (Omit<Product, 'quantity'> & { imageURL: string; price: number; reviews: number; rating: number, dataAiHint: string })[] = [
   {
@@ -87,6 +87,10 @@ const MOCK_PRODUCTS: (Omit<Product, 'quantity'> & { imageURL: string; price: num
 ];
 
 export default function Products() {
+  const plugin = React.useRef(
+    Autoplay({ delay: 2000, stopOnInteraction: true })
+  );
+
   const productsByCategory = {
     'Best Sellers': MOCK_PRODUCTS.slice(0, 4),
     'New Arrivals': MOCK_PRODUCTS.slice(4, 8),
@@ -106,6 +110,9 @@ export default function Products() {
                 align: 'start',
                 loop: true,
               }}
+              plugins={[plugin.current]}
+              onMouseEnter={plugin.current.stop}
+              onMouseLeave={plugin.current.reset}
               className="w-full"
             >
               <CarouselContent className="-ml-4">
@@ -115,8 +122,6 @@ export default function Products() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="absolute left-0 top-1/2 -translate-y-1/2 z-10" />
-              <CarouselNext className="absolute right-0 top-1/2 -translate-y-1/2 z-10" />
             </Carousel>
           </div>
         ))}
@@ -124,5 +129,3 @@ export default function Products() {
     </section>
   );
 }
-
-    

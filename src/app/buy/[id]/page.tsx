@@ -22,6 +22,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { getFirebaseDb, addDoc, collection } from '@/lib/firebase';
+import { sendOrderNotificationEmail } from '@/ai/flows/send-order-notification-email';
 
 const MOCK_PRODUCTS: (Omit<Product, 'quantity'> & { price: number; reviews: number; rating: number; dataAiHint: string })[] = [
     {
@@ -168,23 +169,6 @@ const CheckoutComponent = () => {
     }
   }, [id, searchParams]);
 
-  const sendWhatsAppMessage = (orderData: any) => {
-    const ownerNumber = '918123363394';
-    const messageParts = [
-        `🛍️ *New Order!*`,
-        `*Payment:* ${orderData.paymentMethod}`,
-        `*Customer:* ${orderData.customerName}`,
-        `*Phone:* ${orderData.phone}`,
-        `*Product:* ${orderData.productName}`,
-        `*Quantity:* ${orderData.quantity}`,
-        `*Address:* ${orderData.address}`,
-        `*Total Amount:* ₹${orderData.amount.toFixed(2)}`
-    ];
-    const message = messageParts.join('\n');
-    const whatsappUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
   const placeClientSideOrder = async (orderData: any) => {
     try {
         const db = getFirebaseDb();
@@ -229,17 +213,19 @@ const CheckoutComponent = () => {
                 reject(new Error("Failed to place order"));
                 return;
             }
+
+            await sendOrderNotificationEmail(finalOrderData);
     
             toast({
               title: 'Payment Successful!',
-              description: `Your order for ${finalOrderData.productName} has been placed.`,
+              description: `Your order for ${orderData.items.map(i => i.name).join(', ')} has been placed.`,
             });
             
             resolve(finalOrderData);
           },
           prefill: {
             name: orderData.customerName,
-            email: orderData.email,
+            email: 'not-provided@example.com',
             contact: orderData.phone,
           },
           notes: {
@@ -277,22 +263,18 @@ const CheckoutComponent = () => {
 
     const orderData = {
         customerName: `${data.firstName} ${data.lastName}`,
-        email: 'not-provided@example.com',
         phone: data.phone,
         address: [data.address, data.apartment, data.city, data.state, data.zip, data.country].filter(Boolean).join(', '),
-        productName: product.name,
-        quantity: quantity,
+        items: [{ id: product.id, name: product.name, quantity: quantity, price: product.price }],
         amount: total,
         paymentMethod: paymentMethod,
         paymentStatus: 'pending',
-        orderStatus: 'placed',
-        trackingId: '',
+        paymentId: '', // Default to empty
     };
 
     try {
         if (paymentMethod === 'razorpay') {
-            const paidOrderData: any = await makePayment(orderData);
-            sendWhatsAppMessage(paidOrderData);
+            await makePayment(orderData);
             form.reset();
             router.push('/buy');
 
@@ -310,7 +292,7 @@ const CheckoutComponent = () => {
                 return;
             }
 
-            sendWhatsAppMessage(finalOrderData);
+            await sendOrderNotificationEmail(finalOrderData);
 
             toast({
               title: "Order Placed!",
