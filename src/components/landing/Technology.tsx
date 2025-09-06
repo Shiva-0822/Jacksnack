@@ -30,7 +30,7 @@ export default function Technology() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div className="flex justify-center">
             <Image
-              src="https://picsum.photos/600/500"
+              src="/images/steam.png"
               alt="Technology"
               width={600}
               height={500}

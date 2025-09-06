@@ -3,22 +3,19 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Facebook, Instagram, Youtube, Twitter, Search, User, ShoppingCart, LogOut } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { getFirebaseAuth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import { Facebook, Instagram, Youtube, Twitter, ShoppingCart, Menu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import type { Auth } from 'firebase/auth';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useCart } from '@/context/CartContext';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState } from 'react';
+import UserProfileButton from '@/components/auth/UserProfileButton';
+
 
 const navLinks = [
   { name: "HOME", href: "/" },
-  { name: "PRODUCTS", href: "/buy" },
+  { name: "PRODUCTS", href: "/deliverypage" },
   { name: "COMBOS", href: "#" },
   { name: "ABOUT US", href: "/#about" },
   { name: "CONTACT US", href: "/#contact" },
@@ -26,23 +23,30 @@ const navLinks = [
 ];
 
 export default function Header() {
-  const { user } = useAuth();
   const { cart, loading } = useCart();
   const router = useRouter();
-  const [auth, setAuth] = useState<Auth | null>(null);
-
-  useEffect(() => {
-    setAuth(getFirebaseAuth());
-  }, []);
-
-  const handleLogout = async () => {
-    if (auth) {
-      await signOut(auth);
-    }
-    router.push('/login');
-  };
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  const NavContent = () => (
+    <nav className="flex flex-col gap-6 text-lg font-medium mt-8">
+       {navLinks.map((link) => (
+         <Link
+          key={link.name}
+          href={link.href}
+          onClick={() => setIsMenuOpen(false)}
+          className="font-medium text-gray-500 hover:text-gray-900"
+        >
+          {link.name}
+        </Link>
+      ))}
+      <div className="sm:hidden">
+          <UserProfileButton />
+      </div>
+    </nav>
+  );
+
 
   return (
     <header className="bg-white text-gray-800 border-b">
@@ -63,7 +67,7 @@ export default function Header() {
       <div className="container mx-auto flex items-center justify-between py-4 px-4 md:px-6">
         <div className="flex-shrink-0">
           <Link href="/">
-              <Image src="https://picsum.photos/100/50?random=20" alt="KARANTH'S Logo" width={100} height={50} data-ai-hint="logo" />
+              <Image src="/images/logo.png" alt="KARANTH'S Logo" width={100} height={50} data-ai-hint="logo" />
           </Link>
         </div>
         
@@ -79,33 +83,11 @@ export default function Header() {
           </ul>
         </nav>
         
-        <div className="flex items-center gap-6">
-          <button className="text-gray-500 hover:text-gray-900"><Search className="w-5 h-5" /></button>
-          
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900 rounded-full">
-                  <User className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {user.email && <DropdownMenuItem disabled><span className='text-xs text-muted-foreground'>{user.email}</span></DropdownMenuItem>}
-                <DropdownMenuItem onClick={handleLogout} className='cursor-pointer'>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link href="/login" passHref>
-              <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-900">
-                <User className="w-5 h-5" />
-              </Button>
-            </Link>
-          )}
+        <div className="flex items-center gap-4">
+
+          <div className="hidden sm:flex">
+            <UserProfileButton />
+          </div>
 
           <Sheet>
             <SheetTrigger asChild>
@@ -124,11 +106,11 @@ export default function Header() {
                     <ShoppingCart className="w-16 h-16 text-gray-300 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700">Your cart is empty</h3>
                     <p className="text-gray-500 text-sm">Looks like you haven't added anything to your cart yet.</p>
-                    <SheetTrigger asChild>
-                      <Link href="/buy" passHref>
+                    <SheetClose asChild>
+                      <Link href="/deliverypage" passHref>
                          <Button className="mt-6">Continue Shopping</Button>
                       </Link>
-                    </SheetTrigger>
+                    </SheetClose>
                   </div>
                 ) : (
                   <>
@@ -162,11 +144,11 @@ export default function Header() {
                           <span>₹{subtotal.toFixed(2)}</span>
                        </div>
                        <p className="text-xs text-gray-500 mt-1">Shipping and taxes calculated at checkout.</p>
-                        <SheetTrigger asChild>
+                        <SheetClose asChild>
                            <Link href="/checkout" passHref>
                             <Button className="w-full mt-4">View Cart & Checkout</Button>
                           </Link>
-                        </SheetTrigger>
+                        </SheetClose>
                      </div>
                   </SheetFooter>
                   </>
@@ -174,6 +156,27 @@ export default function Header() {
               </div>
             </SheetContent>
           </Sheet>
+
+          <div className="md:hidden">
+            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Toggle navigation menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                  <SheetHeader>
+                      <SheetTitle>
+                          <Link href="/" onClick={() => setIsMenuOpen(false)}>
+                              <Image src="https://picsum.photos/100/50?random=20" alt="KARANTH'S Logo" width={100} height={50} data-ai-hint="logo" />
+                          </Link>
+                      </SheetTitle>
+                  </SheetHeader>
+                  <NavContent />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>

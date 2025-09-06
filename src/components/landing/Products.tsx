@@ -10,25 +10,25 @@ import Link from 'next/link';
 
 const MOCK_PRODUCTS: Product[] = [
   {
-    id: '1',
+    id: 'prod_1',
     name: 'Jacksnack Alpha',
-    imageURL: 'https://picsum.photos/400/600?random=1',
+    imageURL: '/images/jack.jpg',
     quantity: 1,
     price: 1.00,
     description: 'High-speed processing and ultra-durable chassis for the ultimate performance.',
   },
   {
-    id: '2',
+    id: 'prod_7',
     name: 'Jacksnack Beta',
-    imageURL: 'https://picsum.photos/400/600?random=2',
+    imageURL: '/images/jack.jpg',
     quantity: 1,
     price: 79.99,
     description: 'Compact, lightweight, with all-day battery life for productivity on the go.',
   },
   {
-    id: '3',
+    id: 'prod_8',
     name: 'Jacksnack Gamma',
-    imageURL: 'https://picsum.photos/400/600?random=3',
+    imageURL: '/images/jack.jpg',
     quantity: 1,
     price: 129.99,
     description: 'A stunning 4K Ultra-HD display and an immersive audio system for entertainment.',
@@ -70,13 +70,6 @@ export default function Products() {
                   <CardDescription className="mt-4 text-base text-muted-foreground">
                     {product.description}
                   </CardDescription>
-                </div>
-                <div className="flex flex-col gap-2 mt-4">
-                  <Link href={`/buy/${product.id}`} passHref>
-                    <Button className="w-full">
-                        View Product
-                    </Button>
-                  </Link>
                 </div>
               </CardContent>
             </Card>

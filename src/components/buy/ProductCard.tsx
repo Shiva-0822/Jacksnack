@@ -1,34 +1,35 @@
 
 "use client";
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Star, ShoppingCart } from 'lucide-react';
+import { Star, ShoppingCart, Plus, Minus } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getFirebaseDb, doc, setDoc, getDoc, serverTimestamp, increment } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 type ProductCardProps = {
     product: Omit<Product, 'quantity'> & { imageURL: string; price: number; reviews: number; rating: number, dataAiHint: string };
+    variant?: 'default' | 'borderless';
 };
 
-const ProductCard = ({ product }: ProductCardProps) => {
+const ProductCard = ({ product, variant = 'default' }: ProductCardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = async () => {
     if (!user) {
       toast({
-        title: "Please log in",
-        description: "You need to be logged in to add items to your cart.",
+        title: "Cart requires login",
+        description: "You need to be logged in to add items to your cart. This feature will be re-enabled soon.",
         variant: "destructive",
-        action: (
-            <Button onClick={() => router.push('/login')}>Login</Button>
-        )
       });
       return;
     }
@@ -41,22 +42,22 @@ const ProductCard = ({ product }: ProductCardProps) => {
       if (docSnap.exists()) {
         // If item exists, increment quantity
         await setDoc(itemRef, {
-            quantity: increment(1)
+            quantity: increment(quantity)
         }, { merge: true });
         toast({
             title: "Quantity updated!",
-            description: `The quantity for ${product.name} has been updated in your cart.`,
+            description: `${product.name} has been added to your cart.`,
         });
       } else {
         // If item does not exist, add it to cart
         await setDoc(itemRef, {
             ...product,
-            quantity: 1, // Start with quantity 1
+            quantity: quantity,
             addedAt: serverTimestamp()
         });
         toast({
             title: "Added to cart!",
-            description: `${product.name} has been added to your cart.`,
+            description: `${quantity} x ${product.name} has been added to your cart.`,
         });
       }
 
@@ -70,11 +71,13 @@ const ProductCard = ({ product }: ProductCardProps) => {
     }
   };
 
-
   return (
-    <div className="text-center group flex flex-col justify-between h-full border rounded-lg p-4 transition-all hover:shadow-lg">
+    <div className={cn(
+        "text-center group flex flex-col justify-between h-full",
+        variant === 'default' && "border rounded-lg p-4 transition-all hover:shadow-lg"
+    )}>
       <div>
-        <div className="relative w-full aspect-1 bg-gray-100 rounded-lg overflow-hidden mb-4">
+        <div className="relative w-full aspect-square bg-gray-100 rounded-lg overflow-hidden mb-2">
             <Image 
                 src={product.imageURL} 
                 alt={product.name}
@@ -83,22 +86,31 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 data-ai-hint={product.dataAiHint}
             />
         </div>
-        <h3 className="text-base text-gray-700 mb-2 h-10">{product.name}</h3>
-        <div className="flex justify-center items-center gap-1 mb-2">
+        <h3 className="font-semibold text-sm text-gray-800 mb-1 h-10 flex items-center justify-center">{product.name}</h3>
+        <div className="flex justify-center items-center gap-1 mb-1">
             {[...Array(5)].map((_, i) => (
-                <Star key={i} className={`w-4 h-4 ${i < product.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                <Star key={i} className={`w-3 h-3 ${i < product.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
             ))}
-            <span className="text-sm text-gray-500 ml-1">({product.reviews} reviews)</span>
+            <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
         </div>
-        <p className="text-lg font-semibold text-gray-800 mb-4">From ₹{product.price.toFixed(2)}</p>
+        <p className="text-md font-semibold text-gray-800 mb-3">₹{product.price.toFixed(2)}</p>
       </div>
       <div className="flex flex-col gap-2 mt-auto">
-        <Button variant="outline" size="sm" onClick={handleAddToCart}>
-            <ShoppingCart className="mr-2 h-4 w-4" />
+        <div className="flex justify-center items-center gap-2 mb-2">
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQuantity(q => Math.max(1, q - 1))}>
+                <Minus className="h-3 w-3" />
+            </Button>
+            <span className="font-semibold text-sm w-8 text-center">{quantity}</span>
+            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setQuantity(q => q + 1)}>
+                <Plus className="h-3 w-3" />
+            </Button>
+        </div>
+        <Button variant="outline" size="sm" className="text-xs" onClick={handleAddToCart}>
+            <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />
             Add to Cart
         </Button>
-        <Link href={`/buy/${product.id}`} passHref>
-          <Button size="sm" className="w-full bg-green-500 hover:bg-green-600">
+        <Link href={`/deliverypage/${product.id}?quantity=${quantity}`} passHref>
+          <Button size="sm" className="w-full bg-green-500 hover:bg-green-600 text-xs">
               Buy Now
           </Button>
         </Link>

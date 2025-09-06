@@ -1,12 +1,10 @@
 import Link from 'next/link';
 import { Facebook, Phone, Mail } from 'lucide-react';
+import Image from 'next/image';
 
 const JacksnackLogo = () => (
   <div className="flex items-center gap-2">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2 12H22" stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-    <span className="font-bold text-xl text-foreground">JACKSNACK</span>
+    <Image src="/images/logo.png" alt="Logo" width={100} height={50} data-ai-hint="logo" />
   </div>
 );
 

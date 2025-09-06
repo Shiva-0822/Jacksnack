@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
@@ -8,7 +9,8 @@ export default function FloatingBackButton() {
   const router = useRouter();
   const pathname = usePathname();
 
-  if (pathname === '/') {
+  // Do not show on the root landing page, product listing, or checkout
+  if (pathname === '/' || pathname === '/deliverypage' || pathname === '/checkout') {
     return null;
   }
 
@@ -25,3 +27,5 @@ export default function FloatingBackButton() {
     </div>
   );
 }
+
+    

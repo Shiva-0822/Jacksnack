@@ -1,12 +1,11 @@
+
 import Link from 'next/link';
 import { Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
+import Image from 'next/image';
 
 const JacksnackLogo = () => (
     <div className="flex items-center gap-2">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 12H22" stroke="#000" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      <span className="font-bold text-xl text-gray-800">JACKSNACK</span>
+      <Image src="/images/logo.png" alt="Logo" width={100} height={50} data-ai-hint="logo" />
     </div>
   );
 
@@ -39,7 +38,7 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li><Link href="/" className="hover:text-gray-800">Home</Link></li>
-              <li><Link href="/buy" className="hover:text-gray-800">Products</Link></li>
+              <li><Link href="/deliverypage" className="hover:text-gray-800">Products</Link></li>
               <li><Link href="#" className="hover:text-gray-800">Combos</Link></li>
               <li><Link href="/#about" className="hover:text-gray-800">About Us</Link></li>
             </ul>
@@ -48,7 +47,7 @@ export default function Footer() {
             <h3 className="font-semibold text-gray-800 mb-4">Support</h3>
             <ul className="space-y-2">
               <li><Link href="/#contact" className="hover:text-gray-800">Contact Us</Link></li>
-              <li><Link href="#" className="hover:text-gray-800">FAQ</Link></li>
+              <li><Link href="/deliverypage#faq" className="hover:text-gray-800">FAQ</Link></li>
               <li><Link href="#" className="hover:text-gray-800">Shipping & Returns</Link></li>
             </ul>
           </div>

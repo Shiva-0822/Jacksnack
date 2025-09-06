@@ -33,17 +33,14 @@ export const OrderNotificationInputSchema = z.object({
   amount: z.number(),
   paymentMethod: z.string(),
   paymentStatus: z.string(),
-  paymentId: z.string().optional(),
-  // For single product checkout
-  productName: z.string().optional(),
-  quantity: z.number().optional(),
-  // For multi-product checkout
+  paymentId: z.string().optional().nullable(),
   items: z.array(z.object({
     id: z.string(),
     name: z.string(),
     quantity: z.number(),
     price: z.number(),
-  })).optional(),
+  })),
+  createdAt: z.date().optional(),
 });
 
 export type OrderNotificationInput = z.infer<typeof OrderNotificationInputSchema>;

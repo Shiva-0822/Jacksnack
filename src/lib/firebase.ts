@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore, collection, doc, setDoc, addDoc, deleteDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
-import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore, collection, doc, setDoc, addDoc, deleteDoc, getDoc, serverTimestamp, increment, query, where, Timestamp, limit, orderBy } from "firebase/firestore";
+import { getAuth, Auth, signInWithCustomToken } from "firebase/auth";
 
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -33,4 +33,22 @@ function getFirebaseDb(): Firestore {
 
 // We no longer export the instances directly.
 // Instead, components will call these functions to get the service they need.
-export { getFirebaseAuth, getFirebaseDb, firebaseConfig, collection, doc, setDoc, addDoc, deleteDoc, getDoc, serverTimestamp, increment };
+export { 
+    getFirebaseAuth, 
+    getFirebaseDb, 
+    firebaseConfig, 
+    collection, 
+    doc, 
+    setDoc, 
+    addDoc, 
+    deleteDoc, 
+    getDoc, 
+    serverTimestamp, 
+    increment,
+    query,
+    where,
+    Timestamp,
+    limit,
+    orderBy,
+    signInWithCustomToken
+};

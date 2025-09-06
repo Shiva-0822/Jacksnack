@@ -13,23 +13,22 @@ import { type CarouselApi } from "@/components/ui/carousel";
 import { cn } from '@/lib/utils';
 import Autoplay from "embla-carousel-autoplay";
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 
 const heroSlides = [
   {
-    imageSrc: 'https://picsum.photos/800/800?random=10',
+    imageSrc: '/images/jack.jpg',
     title: 'Experience the Jacksnack Alpha',
     description: 'High-speed processing and ultra-durable chassis for the ultimate performance.',
     dataAiHint: 'futuristic gadget'
   },
   {
-    imageSrc: 'https://picsum.photos/800/800?random=11',
+    imageSrc: '/images/jack.jpg',
     title: 'Discover the Jacksnack Beta',
     description: 'Compact, lightweight, with all-day battery life for productivity on the go.',
     dataAiHint: 'sleek device'
   },
   {
-    imageSrc: 'https://picsum.photos/800/800?random=12',
+    imageSrc: '/images/jack.jpg',
     title: 'Unveil the Jacksnack Gamma',
     description: 'A stunning 4K Ultra-HD display and an immersive audio system for entertainment.',
     dataAiHint: 'vibrant screen'
@@ -42,7 +41,6 @@ export default function Hero() {
   const plugin = useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
   );
-  const { user } = useAuth();
 
   useEffect(() => {
     if (!api) {
@@ -101,8 +99,8 @@ export default function Hero() {
                       {slide.description}
                     </p>
                     <div className="mt-4">
-                      <Link href={user ? "/buy" : "/login"}>
-                        <Button size="lg" className="bg-red-500 hover:bg-red-600 text-primary-foreground text-lg px-8 py-6 rounded-md transition-transform hover:scale-105">
+                      <Link href="/deliverypage">
+                        <Button size="lg" className="bg-red-700 hover:bg-red-800 text-primary-foreground text-lg px-8 py-6 rounded-md transition-transform hover:scale-105">
                           Buy now!
                         </Button>
                       </Link>

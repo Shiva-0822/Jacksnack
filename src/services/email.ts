@@ -4,50 +4,46 @@
 import { Resend } from 'resend';
 import type { OrderNotificationInput } from '@/lib/types';
 
-// Ensure the RESEND_API_KEY is available in the environment variables.
-if (!process.env.RESEND_API_KEY) {
-  throw new Error('RESEND_API_KEY is not set in the environment variables.');
+// Fallback to a developer-only address if the main one isn't set.
+const fromEmail = process.env.FROM_EMAIL || 'JackSnack@resend.dev';
+const toEmail = process.env.OWNER_EMAIL;
+
+function getResend(): Resend | null {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (!resendApiKey) {
+    console.error('RESEND_API_KEY is not set in the environment variables. Email will not be sent.');
+    return null;
+  }
+  return new Resend(resendApiKey);
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function sendOrderNotificationEmail(order: OrderNotificationInput) {
-  const fromEmail = process.env.FROM_EMAIL;
-  const toEmail = process.env.OWNER_EMAIL;
-
-  if (!fromEmail || !toEmail) {
-    console.error('FROM_EMAIL or OWNER_EMAIL is not set in environment variables.');
-    throw new Error('Email configuration is missing.');
+  const resend = getResend();
+  if (!resend) {
+    console.warn("Resend not configured, skipping email.");
+    return;
+  }
+  
+  if (!toEmail) {
+    console.error('OWNER_EMAIL is not set in environment variables. Cannot send order notification.');
+    return;
   }
 
-  const subject = `New Order Received - ${order.productName || 'Multiple Items'}`;
+  const subject = `New Order Received - ${order.customerName}`;
   
-  let itemsHtml: string;
-
-  if (order.items && order.items.length > 0) {
-    itemsHtml = order.items.map(item => `
+  const itemsHtml = order.items.map(item => `
       <tr>
         <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
         <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${item.price.toFixed(2)}</td>
       </tr>
     `).join('');
-  } else if (order.productName) {
-    // For single item orders, we need to calculate the price per item if not available directly
-    const price = (order.amount - 40) / (order.quantity || 1) ; // Assuming 40 is shipping
-     itemsHtml = `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${order.productName}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${order.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${price.toFixed(2)}</td>
-      </tr>
-    `;
-  } else {
-    itemsHtml = '<tr><td colspan="3" style="padding: 8px; border-bottom: 1px solid #ddd;">No items details available.</td></tr>';
-  }
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <img src="https://picsum.photos/150/75?random=1" alt="Jacksnack Logo" style="max-width: 150px;" data-ai-hint="logo" />
+      </div>
       <h1 style="color: #000; font-size: 24px; text-align: center;">🛍️ New Order Received!</h1>
       <p style="text-align: center;">A new order has been placed on your website.</p>
       
