@@ -22,34 +22,67 @@ export async function sendOrderNotificationEmail(order: OrderNotificationInput) 
 
   const subject = `New Order Received - ${order.productName || 'Multiple Items'}`;
   
-  const itemsHtml = order.items 
-    ? order.items.map(item => `<li>${item.name} (x${item.quantity}) - ₹${item.price.toFixed(2)}</li>`).join('')
-    : `<li>${order.productName} (x${order.quantity})</li>`;
+  let itemsHtml: string;
+
+  if (order.items && order.items.length > 0) {
+    itemsHtml = order.items.map(item => `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${item.price.toFixed(2)}</td>
+      </tr>
+    `).join('');
+  } else if (order.productName) {
+    // For single item orders, we need to calculate the price per item if not available directly
+    const price = (order.amount - 40) / (order.quantity || 1) ; // Assuming 40 is shipping
+     itemsHtml = `
+      <tr>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd;">${order.productName}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${order.quantity}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${price.toFixed(2)}</td>
+      </tr>
+    `;
+  } else {
+    itemsHtml = '<tr><td colspan="3" style="padding: 8px; border-bottom: 1px solid #ddd;">No items details available.</td></tr>';
+  }
 
   const htmlContent = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-      <h1 style="color: #333;">🛍️ New Order Received!</h1>
-      <p>A new order has been placed on your website.</p>
-      <hr>
-      <h2>Order Details:</h2>
-      <ul>
-        <li><strong>Customer Name:</strong> ${order.customerName}</li>
-        <li><strong>Phone:</strong> ${order.phone}</li>
-        <li><strong>Address:</strong> ${order.address}</li>
-      </ul>
-      <h2>Product(s):</h2>
-      <ul>
-        ${itemsHtml}
-      </ul>
-      <hr>
-      <h2>Payment Details:</h2>
-      <ul>
-        <li><strong>Total Amount:</strong> ₹${order.amount.toFixed(2)}</li>
-        <li><strong>Payment Method:</strong> ${order.paymentMethod}</li>
-        <li><strong>Payment Status:</strong> ${order.paymentStatus}</li>
-        ${order.paymentId ? `<li><strong>Payment ID:</strong> ${order.paymentId}</li>` : ''}
-      </ul>
-      <p>Please process this order as soon as possible.</p>
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px;">
+      <h1 style="color: #000; font-size: 24px; text-align: center;">🛍️ New Order Received!</h1>
+      <p style="text-align: center;">A new order has been placed on your website.</p>
+      
+      <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <h2 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">Customer Details</h2>
+        <p><strong>Name:</strong> ${order.customerName}</p>
+        <p><strong>Phone:</strong> ${order.phone}</p>
+        <p><strong>Address:</strong> ${order.address}</p>
+      </div>
+      
+      <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+        <h2 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">Order Details</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: left;">Product</th>
+                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: center;">Quantity</th>
+                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: right;">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+      </div>
+
+      <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px;">
+        <h2 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 0;">Payment Details</h2>
+        <p><strong>Total Amount:</strong> ₹${order.amount.toFixed(2)}</p>
+        <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+        <p><strong>Payment Status:</strong> ${order.paymentStatus}</p>
+        ${order.paymentId ? `<p><strong>Payment ID:</strong> ${order.paymentId}</p>` : ''}
+      </div>
+
+      <p style="text-align: center; margin-top: 20px; color: #888;">Please process this order as soon as possible.</p>
     </div>
   `;
 
