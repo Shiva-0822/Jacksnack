@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -130,8 +130,6 @@ const CheckoutComponent = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const rzpRef = useRef<any>(null);
-
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -188,6 +186,72 @@ const CheckoutComponent = () => {
     }
   };
 
+  const makePayment = (orderData: any) => {
+    return new Promise((resolve, reject) => {
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: orderData.amount * 100, // amount in the smallest currency unit
+          currency: 'INR',
+          name: 'JACKSNACK',
+          description: `Order for ${orderData.productName}`,
+          image: 'https://picsum.photos/100/50?random=20',
+          handler: async (response: any) => {
+            const finalOrderData = {
+              ...orderData,
+              paymentId: response.razorpay_payment_id,
+              paymentStatus: 'paid',
+            }
+            
+            const result = await placeClientSideOrder(finalOrderData);
+
+            if (!result.success) {
+                toast({
+                    title: "Error Placing Order",
+                    description: result.error || "There was a problem saving your order after payment. Please contact support.",
+                    variant: "destructive",
+                });
+                reject(new Error("Failed to place order"));
+                return;
+            }
+
+            await sendOrderNotificationEmail(finalOrderData);
+    
+            toast({
+              title: 'Payment Successful!',
+              description: `Your order for ${orderData.items.map(i => i.name).join(', ')} has been placed.`,
+            });
+            
+            resolve(finalOrderData);
+          },
+          prefill: {
+            name: orderData.customerName,
+            email: 'not-provided@example.com',
+            contact: orderData.phone,
+          },
+          notes: {
+            address: orderData.address,
+          },
+          theme: {
+            color: '#0c63e4',
+          },
+          modal: {
+            ondismiss: () => {
+              console.log('Payment modal dismissed');
+              toast({
+                title: 'Payment Canceled',
+                description: 'You canceled the payment process.',
+                variant: 'destructive'
+              });
+              reject(new Error("Payment modal dismissed"));
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+    });
+  }
+
   async function handlePayNow(data: z.infer<typeof FormSchema>) {
     if (!product) return;
 
@@ -210,68 +274,9 @@ const CheckoutComponent = () => {
 
     try {
         if (paymentMethod === 'razorpay') {
-            const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-                amount: orderData.amount * 100, // amount in the smallest currency unit
-                currency: 'INR',
-                name: 'JACKSNACK',
-                description: `Order for ${orderData.items.map((i: any) => i.name).join(', ')}`,
-                image: 'https://picsum.photos/100/50?random=20',
-                handler: async (response: any) => {
-                    const finalOrderData = {
-                        ...orderData,
-                        paymentId: response.razorpay_payment_id,
-                        paymentStatus: 'paid',
-                    };
-                    const result = await placeClientSideOrder(finalOrderData);
-                    if (result.success) {
-                        await sendOrderNotificationEmail(finalOrderData);
-                        toast({
-                          title: 'Payment Successful!',
-                          description: `Your order for ${finalOrderData.items.map((i: any) => i.name).join(', ')} has been placed.`,
-                        });
-                        form.reset();
-                        router.push('/buy');
-                    } else {
-                         toast({
-                            title: "Error Placing Order",
-                            description: result.error || "There was a problem saving your order after payment. Please contact support.",
-                            variant: "destructive",
-                        });
-                    }
-                    setIsProcessing(false);
-                },
-                prefill: {
-                    name: orderData.customerName,
-                    email: 'not-provided@example.com',
-                    contact: orderData.phone,
-                },
-                notes: {
-                    address: orderData.address,
-                },
-                theme: {
-                    color: '#0c63e4',
-                },
-                modal: {
-                    ondismiss: () => {
-                        toast({
-                          title: 'Payment Canceled',
-                          description: 'You canceled the payment process.',
-                          variant: 'destructive'
-                        });
-                        setIsProcessing(false);
-                    },
-                },
-            };
-            
-            if (!window.Razorpay) {
-                toast({ title: "Error", description: "Razorpay SDK failed to load.", variant: "destructive" });
-                setIsProcessing(false);
-                return;
-            }
-            
-            rzpRef.current = new window.Razorpay(options);
-            rzpRef.current.open();
+            await makePayment(orderData);
+            form.reset();
+            router.push('/buy');
 
         } else { // COD
             const finalOrderData = { ...orderData, paymentMethod: 'COD', paymentStatus: 'cod' };
@@ -283,25 +288,30 @@ const CheckoutComponent = () => {
                     description: result.error || "Failed to place your order. Please try again.",
                     variant: "destructive",
                 });
-            } else {
-                await sendOrderNotificationEmail(finalOrderData);
-                toast({
-                  title: "Order Placed!",
-                  description: "Your order has been placed successfully. You will pay on delivery.",
-                });
-                form.reset();
-                router.push('/buy');
+                setIsProcessing(false);
+                return;
             }
-            setIsProcessing(false);
+
+            await sendOrderNotificationEmail(finalOrderData);
+
+            toast({
+              title: "Order Placed!",
+              description: "Your order has been placed successfully. You will pay on delivery.",
+            });
+            form.reset();
+            router.push('/buy');
         }
 
     } catch (error: any) {
         console.error("Error processing order: ", error);
-        toast({
-            title: "Error",
-            description: error.message || "There was a problem placing your order. Please try again.",
-            variant: "destructive",
-        });
+        if (error.message !== 'Payment modal dismissed') {
+             toast({
+                title: "Error",
+                description: error.message || "There was a problem placing your order. Please try again.",
+                variant: "destructive",
+            });
+        }
+    } finally {
         setIsProcessing(false);
     }
   }
