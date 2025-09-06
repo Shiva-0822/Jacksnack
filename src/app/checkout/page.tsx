@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, Landmark, Truck, Info, ChevronDown, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Truck, Info, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,10 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { getFirebaseDb, addDoc, collection } from '@/lib/firebase';
-import { sendOrderNotificationEmail } from '@/ai/flows/send-order-notification-email';
+import { createOrderAction } from '@/app/actions';
 
 const FormSchema = z.object({
     country: z.string(),
@@ -84,160 +83,111 @@ const CheckoutComponent = () => {
     }
   }, [cart, cartLoading, router, toast]);
 
-  const placeClientSideOrder = async (orderData: any) => {
-    try {
-        const db = getFirebaseDb();
-        const docRef = await addDoc(collection(db, "orders"), {
-           ...orderData,
-           createdAt: new Date(),
+
+  const subtotal = useMemo(() => {
+    if (!cart) return 0;
+    return cart.reduce((acc, item) => {
+        if (item.id === 'prod_1') return acc + 1.00;
+        return acc + (item.price * item.quantity);
+    }, 0);
+  }, [cart]);
+
+  const shipping = useMemo(() => {
+    if (!cart) return 0;
+    const hasJacksnackAlpha = cart.some(item => item.id === 'prod_1');
+    return hasJacksnackAlpha ? 1.00 : 40.00;
+  }, [cart]);
+
+  const total = useMemo(() => subtotal + shipping, [subtotal, shipping]);
+
+
+  async function handleFinalizeOrder(shippingData: z.infer<typeof FormSchema>, paymentId?: string) {
+    if (cart.length === 0) return;
+
+    const orderData = {
+        amount: total,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentId ? 'paid' : 'cod',
+        paymentId: paymentId,
+        items: cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity, price: item.price })),
+        customerName: `${shippingData.firstName} ${shippingData.lastName}`,
+        phone: shippingData.phone,
+        address: [shippingData.address, shippingData.apartment, shippingData.city, shippingData.state, shippingData.zip, shippingData.country].filter(Boolean).join(', '),
+    };
+
+    const result = await createOrderAction(orderData, shippingData);
+    
+    if (result.success) {
+        toast({
+            title: paymentId ? 'Payment Successful!' : 'Order Placed!',
+            description: "Your order has been placed successfully.",
         });
-        return { success: true, orderId: docRef.id };
-    } catch (error) {
-        console.error("Error saving order to Firestore:", error);
-        return {
-            success: false,
-            error: "An unexpected error occurred while placing the order.",
-        };
+        await clearCart();
+        form.reset();
+        router.push('/buy?order_success=true');
+    } else {
+        toast({
+            title: "Error Placing Order",
+            description: result.error || "An unexpected error occurred.",
+            variant: "destructive",
+        });
     }
-  };
-
-  const makePayment = (orderData: any) => {
-    return new Promise((resolve, reject) => {
-      const productDescription = cart.map(p => p.name).join(', ');
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount * 100, // amount in the smallest currency unit
-        currency: 'INR',
-        name: 'JACKSNACK',
-        description: `Order for ${productDescription}`,
-        image: 'https://picsum.photos/100/50?random=20',
-        handler: async (response: any) => {
-          const finalOrderData = {
-            ...orderData,
-            paymentId: response.razorpay_payment_id,
-            paymentStatus: 'paid',
-          }
-          
-          const result = await placeClientSideOrder(finalOrderData);
-
-          if (!result.success) {
-              toast({
-                  title: "Error Placing Order",
-                  description: result.error || "There was a problem saving your order after payment. Please contact support.",
-                  variant: "destructive",
-              });
-              reject(new Error("Failed to place order"));
-              return;
-          }
-          
-          await sendOrderNotificationEmail(finalOrderData);
-  
-          toast({
-            title: 'Payment Successful!',
-            description: `Your order for ${productDescription} has been placed.`,
-          });
-          
-          resolve(finalOrderData);
-        },
-        prefill: {
-          name: orderData.customerName,
-          email: 'not-provided@example.com',
-          contact: orderData.phone,
-        },
-        notes: {
-          address: orderData.address,
-        },
-        theme: {
-          color: '#0c63e4',
-        },
-        modal: {
-          ondismiss: () => {
-            console.log('Payment modal dismissed');
-            toast({
-              title: 'Payment Canceled',
-              description: 'You canceled the payment process.',
-              variant: 'destructive'
-            });
-            reject(new Error("Payment modal dismissed"));
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    });
+    setIsProcessing(false);
   }
 
   async function handlePayNow(data: z.infer<typeof FormSchema>) {
     if (cart.length === 0) return;
-
     setIsProcessing(true);
-    
-    const subtotal = cart.reduce((acc, item) => {
-      if (item.id === 'prod_1') return acc + 1.00; // Special case for Jacksnack Alpha
-      return acc + (item.price * item.quantity);
-    }, 0);
 
-    const hasJacksnackAlpha = cart.some(item => item.id === 'prod_1');
-    const standardShipping = 40.00;
-    const shipping = hasJacksnackAlpha ? 1.00 : standardShipping;
-
-    const total = subtotal + shipping;
-
-    const orderData = {
-        customerName: `${data.firstName} ${data.lastName}`,
-        phone: data.phone,
-        address: [data.address, data.apartment, data.city, data.state, data.zip, data.country].filter(Boolean).join(', '),
-        items: cart.map(item => ({id: item.id, name: item.name, quantity: item.quantity, price: item.price})),
-        amount: total,
-        paymentMethod: paymentMethod,
-        paymentStatus: 'pending',
-        paymentId: '',
-    };
-
-    try {
-        if (paymentMethod === 'razorpay') {
-            await makePayment(orderData);
-            await clearCart();
-            form.reset();
-            router.push('/buy');
-        } else { // COD
-            const finalOrderData = { ...orderData, paymentMethod: 'COD', paymentStatus: 'cod' };
-            const result = await placeClientSideOrder(finalOrderData);
-
-            if (!result.success) {
-                toast({
-                    title: "Error Placing Order",
-                    description: result.error || "Failed to place your order. Please try again.",
-                    variant: "destructive",
-                });
-                setIsProcessing(false);
-                return;
-            }
-            
-            await sendOrderNotificationEmail(finalOrderData);
-
+    if (paymentMethod === 'cod') {
+        await handleFinalizeOrder(data);
+    } else {
+        if (!window.Razorpay) {
             toast({
-              title: "Order Placed!",
-              description: "Your order has been placed successfully. You will pay on delivery.",
-            });
-            await clearCart();
-            form.reset();
-            router.push('/buy');
-        }
-
-    } catch (error: any) {
-        console.error("Error processing order: ", error);
-        if(error.message !== 'Payment modal dismissed') {
-            toast({
-                title: "Error",
-                description: error.message || "There was a problem placing your order. Please try again.",
+                title: "Payment Gateway Error",
+                description: "Razorpay is not loaded. Please try again in a moment.",
                 variant: "destructive",
             });
+            setIsProcessing(false);
+            return;
         }
-    } finally {
-        setIsProcessing(false);
+
+        const productDescription = cart.map(p => p.name).join(', ');
+
+        const options = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            amount: total * 100, // amount in the smallest currency unit
+            currency: 'INR',
+            name: 'JACKSNACK',
+            description: `Order for ${productDescription}`,
+            image: 'https://picsum.photos/100/50?random=20',
+            handler: async (response: any) => {
+                await handleFinalizeOrder(data, response.razorpay_payment_id);
+            },
+            prefill: {
+                name: `${data.firstName} ${data.lastName}`,
+                contact: data.phone,
+            },
+            notes: {
+                address: [data.address, data.apartment, data.city, data.state, data.zip, data.country].filter(Boolean).join(', '),
+            },
+            theme: {
+                color: '#0c63e4',
+            },
+            modal: {
+                ondismiss: () => {
+                    console.log('Payment modal dismissed');
+                    setIsProcessing(false);
+                    toast({
+                        title: 'Payment Canceled',
+                        description: 'You canceled the payment process.',
+                        variant: 'destructive'
+                    });
+                },
+            },
+        };
+        const rzpInstance = new window.Razorpay(options);
+        rzpInstance.open();
     }
   }
 
@@ -252,16 +202,6 @@ const CheckoutComponent = () => {
         </div>
     );
   }
-
-  const subtotal = cart.reduce((acc, item) => {
-    if (item.id === 'prod_1') return acc + 1.00;
-    return acc + (item.price * item.quantity);
-  }, 0);
-
-  const hasJacksnackAlpha = cart.some(item => item.id === 'prod_1');
-  const shipping = hasJacksnackAlpha ? 1.00 : 40.00;
-  
-  const total = subtotal + shipping;
 
   return (
     <div className="bg-gray-50">
@@ -380,7 +320,7 @@ const CheckoutComponent = () => {
                         </div>
                         
                          <Button size="lg" type="submit" className="w-full text-lg bg-[#0c63e4] hover:bg-[#0b5ed7] text-white font-semibold" disabled={isProcessing}>
-                            {isProcessing ? 'Processing...' : (paymentMethod === 'cod' ? 'Confirm Order!' : 'Pay now')}
+                            {isProcessing ? 'Processing...' : 'Pay now'}
                         </Button>
                     </div>
 
