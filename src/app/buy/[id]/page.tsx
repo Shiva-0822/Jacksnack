@@ -127,7 +127,6 @@ const CheckoutComponent = () => {
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
-  const [rzp, setRzp] = useState<any>(null);
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -148,9 +147,6 @@ const CheckoutComponent = () => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
-    script.onload = () => {
-        // The Razorpay object is now available on the window
-    };
     document.body.appendChild(script);
 
     return () => {
@@ -186,6 +182,7 @@ const CheckoutComponent = () => {
 
   async function handleFinalizeOrder(shippingData: z.infer<typeof FormSchema>, paymentId?: string) {
     if (!product) return;
+    setIsProcessing(true);
 
     const orderData = {
         amount: total,
@@ -452,3 +449,5 @@ export default function CheckoutPage() {
         </Suspense>
     )
 }
+
+    

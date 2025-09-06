@@ -103,6 +103,7 @@ const CheckoutComponent = () => {
 
   async function handleFinalizeOrder(shippingData: z.infer<typeof FormSchema>, paymentId?: string) {
     if (cart.length === 0) return;
+    setIsProcessing(true);
 
     const orderData = {
         amount: total,
@@ -381,3 +382,5 @@ export default function CheckoutPage() {
         </Suspense>
     )
 }
+
+    
